@@ -7,16 +7,13 @@ library(biomaRt)
 library(SeuratDisk)
 library(factoextra)
 
+# Please adjust paths accordingly
+
 # Helpers
 source("/home/rstudio/jm_rstudio/data_CBL/indNeuro_tmp/0.scRNA-seq_processing/helpers.R")
 
-# Read raw data from tsv.gz file - obligatory if first time running this script
-
-#mtx <- read.table("/home/rstudio/jm_rstudio/data_indNeuro/rna_counts.tsv.gz", sep='\t')
-#saveRDS(mtx, file = "/home/rstudio/jm_rstudio/data_indNeuro/rna_counts.rds")
-
 # Read raw data from rds file
-mtx <- readRDS("/home/rstudio/jm_rstudio/data_indNeuro/rna_counts.rds")
+mtx <- readRDS("/home/rstudio/jm_rstudio/data_indNeuro/tr21_counts.rds")
 
 # Read meta data
 cell.meta <- read.table("/home/rstudio/jm_rstudio/data_indNeuro/rna_cell_metadata.txt", header = TRUE, sep='\t')
@@ -40,8 +37,6 @@ rownames(cell.meta) <- cell.meta$Cell.ID
 cell.meta$Cell.ID <- NULL
 
 mtx <- mtx[,colnames(mtx) %in% rownames(cell.meta)]
-#nrow(cell.meta) == ncol(mtx)
-
 cell.meta <- cell.meta[,0:7]
 names(cell.meta)[7]  <- "tr21_clusters"
 
@@ -54,7 +49,6 @@ cell.meta$Cell.ID <- NULL
 
 
 #Changing gene names from ENS in count matrix 
-
 ensembl <- biomaRt::useMart(biomart = 'ENSEMBL_MART_ENSEMBL', 
                             dataset = 'hsapiens_gene_ensembl',
                             #mirror = "www"
@@ -98,7 +92,7 @@ DefaultAssay(tr21.rna) <- "RNA"
 
 #SaveH5Seurat(tr21.rna, filename = "/home/rstudio/jm_rstudio/data_indNeuro/intermediate_files/rna_counts.h5Seurat")
 #Convert("/home/rstudio/jm_rstudio/data_indNeuro/intermediate_files/rna_counts.h5Seurat", dest = "h5ad")
-#file.remove("/home/rstudio/jm_rstudio/data_indNeuro/intermediate_files/rna_counts.h5Seurat")
+#file.remove("/home/rstudio/jm_rstudio/data_indNeuro/intermediate_files/rna_counts.h5Seurat") 
 
 ### --- ###
 
