@@ -1,0 +1,15 @@
+GO.ID	Term	Annotated	Significant	Expected	Statistics	ER
+GO:0045944	positive regulation of transcription by RNA polymerase II	308	261	250.94	4.3e-09	1.04
+GO:0045893	positive regulation of transcription, DNA-templated	327	277	266.42	0.0031	1.04
+GO:0030154	cell differentiation	281	233	228.94	0.0050	1.02
+GO:0051130	positive regulation of cellular component organization	24	23	19.55	0.0116	1.18
+GO:0010628	positive regulation of gene expression	107	88	87.18	0.0144	1.01
+GO:1902895	positive regulation of pri-miRNA transcription by RNA polymerase II	23	22	18.74	0.0149	1.17
+GO:0019221	cytokine-mediated signaling pathway	23	22	18.74	0.0149	1.17
+GO:0033043	regulation of organelle organization	14	14	11.41	0.0219	1.23
+GO:0009267	cellular response to starvation	14	14	11.41	0.0219	1.23
+GO:0051091	positive regulation of DNA-binding transcription factor activity	21	20	17.11	0.0241	1.17
+GO:0055088	lipid homeostasis	13	13	10.59	0.0289	1.23
+GO:0035914	skeletal muscle cell differentiation	13	13	10.59	0.0289	1.23
+GO:0008585	female gonad development	12	12	9.78	0.0382	1.23
+GO:0030324	lung development	27	24	22	0.0486	1.09
