@@ -1,5 +1,5 @@
 ---
-title: "TF binding disruptions in regulatory islands"
+title: "Differential Transcription Factors binding affinity to HFV in regulatory islands"
 author: "Oliviero Leonardi"
 last update: 'Date: `r format(Sys.Date(), "%B %d, %Y")`'
 output:
@@ -16,13 +16,7 @@ params:
       RegIslandTable: '/group/testa/Users/oliviero.leonardi/myProjects/EVAS/ContainerHome/RegIslands/Inputs/regulatory_islands_alleles.tsv'
 ---
 
-__The aim of this notebook is to run motifbreakR on a selected list of regulatory regions__
-
-__In This version of the notebook I have implemented the following changes to the analysis:__
-
-* Only the top scoring motif for alleleDiff score is retained for each TF-SNPid association, dropping duplicates PWMs
-
-* Scores are inversed in order to display negative scores for reduced affinity and positive scores for increased affinity to modern alleles
+__The aim of this notebook is to run motifbreakR on a selected list of *Sapiens*-derived variants found in regulatory islands and find TF whose binding affinity to target sequence is modified__
 
 ***
 
@@ -63,9 +57,6 @@ regions <- read.table(params$RegIslandTable, sep='\t', header=TRUE)
 ```{r load motif data, collapse=TRUE}
 data(motifbreakR_motif)
 data(hocomoco)
-data(Motif)
-
-#names(hocomoco@listData)
 ```
 
 
@@ -77,34 +68,17 @@ data(Motif)
 ## Identify variants with and without association to any RSID (dbSNP version 142)
 
 ```{r rsids check, collapse=TRUE}
-length(regions$rsID) #total
+length(regions$rsID) #total number of variants
 length(which(regions$rsID == 'Nan')) #255 SNPs not mapped to rsids
 length(which(!regions$rsID == 'Nan')) #8836 SNPs mapped to one or multiple rsids
 ```
 
-```{r drop variants w/o rsid, collapse=TRUE}
-#rsids <- regions$rsID[!regions$rsID == 'Nan']
+* Total number of variants: __`r length(regions$rsID)`__
 
-#rsids <- gsub(",.*", "", rsids)
+* Number of variants mapped to one or multiple rsID: __`r length(which(regions$rsID == 'Nan'))`__
 
+* Number of variants not mapped to any rsID: __`r length(which(!regions$rsID == 'Nan'))`__
 
-#gsub(",.*", "", regions[927, ])
-```
-
-
-## Read only variants associated to a RSID
-
-```{r read rsids, collapse=TRUE}
-#SNPS.from.rsids <- snps.from.rsid(rsid = rsids,
-#                       dbSNP = SNPlocs.Hsapiens.dbSNP150.GRCh38,
-#                       search.genome = BSgenome.Hsapiens.UCSC.hg38)
-```
-
-
-***
-
-
-# All variants
 
 **Variants have to be read in a bed format. In order to do this the original table is converted to a bed file containing the following tab-separated fields:**
 
@@ -172,6 +146,7 @@ length(which(!regions$rsID == 'Nan')) #8836 SNPs mapped to one or multiple rsids
 #saveRDS(mbrkresults_regislands_hg19_hocomoco, file = paste0(params$RegIslandDir, 'mbrkresults_regislands_hg19_hocomoco.rds'))
 
 mbrkresults_regislands_hg19_hocomoco <- readRDS(paste0(params$RegIslandDir, 'Savings/', 'mbrkresults_regislands_hg19_hocomoco.rds'))
+length(mbrkresults_regislands_hg19_hocomoco)
 ```
 
 
@@ -181,29 +156,52 @@ mbrkresults_regislands_hg19_hocomoco <- readRDS(paste0(params$RegIslandDir, 'Sav
 
 ```{r GRangeResults to dataframe, collapse=TRUE}
 ResDF_hg19_hocomoco <- data.frame(mbrkresults_regislands_hg19_hocomoco)
+ResDF_hg19_hocomoco$uniqID <- paste0(ResDF_hg19_hocomoco$SNP_id, '_', ResDF_hg19_hocomoco$providerName)
 ```
+
+__IMPORTANT!__
+__The alleleDiff score is computed as:__
+__alleleDiff = ScoreAlt - ScoreRef__
+
+Therefore, for:
+
+__∆ > 0__ affinity of the TF is higher for archaic seq (lower for modern)
+
+__∆ < 0__ affinity of the TF is higher for modern seq (lower for archaic)
+
+
+**HOWEVER IN THIS NOTEBOOK THE OPPOSITE OF THE SCORES IS COMPUTED FOR A MORE INTUITIVE ASSOCIATION BETWEEN SCORES AND AFFINITY DIFFERENCE**
+
+*The opposite of the AlleleDiff score is calculated as:* **AlleleDiff_opposite = -AlleleDiff**
+
+Therefore, for: 
+
+__∆ > 0__ affinity of the TF is higher for modern seq
+
+__∆ < 0__ affinity of the TF is higher for archaic seq 
+
+**This way, positive score corresponds to increased affinity and negative scores to reduced affinity to modern alleles** 
 
 
 # Sign change of AlleleDiff Scores
 
-*The opposite of the AlleleDiff score is calculated as:* **AlleleDiff_opposite = -AlleleDiff**
-
-**This way, positive score corresponds to increased affinity and negative scores to reduced affinity to modern alleles** 
-
 ```{r Calculate opposite of alleleDiff, collapse=TRUE}
-ResDF_hg19_hocomoco$alleleDiff <- -ResDF_hg19_hocomoco$alleleDiff
+ResDF_hg19_hocomoco$alleleDiff <- -1*ResDF_hg19_hocomoco$alleleDiff
+dim(ResDF_hg19_hocomoco)
 ```
 
 
 # Keep only highest-scoring motif for each gene and remove duplciates from result table
 
+*When multiple motifs of a TF are present, only the top scoring motif by alleleDiff score is retained for each TF-SNPid association*
+
 * 1. Group by SNPid and geneSymbol and sort by absolute alleleDiff for pos and neg scores separated
 * 2. Drop duplicate motifs and keep only the one with highest alleleDiff
-* 3. Bind rows to regenerate comprehensive result table
+* 3. Bind rows to regenerate comprehensive result dataframe
 
 ```{r collapse=TRUE}
-ResDF_all_hocomoco_pos <- ResDF_hg19_hocomoco %>% filter(alleleDiff > 0) #126,398 (75% quantile)
-ResDF_all_hocomoco_neg <- ResDF_hg19_hocomoco %>% filter(alleleDiff < 0) #126,398 (25% quantile)
+ResDF_all_hocomoco_pos <- ResDF_hg19_hocomoco %>% filter(alleleDiff > 0)
+ResDF_all_hocomoco_neg <- ResDF_hg19_hocomoco %>% filter(alleleDiff < 0)
 
 
 ResDF_hocomoco_topmotifs_pos <- ResDF_all_hocomoco_pos %>%
@@ -215,16 +213,17 @@ ResDF_hocomoco_topmotifs_neg <- ResDF_all_hocomoco_neg %>%
                                           top_n(1, abs(alleleDiff))
 
 ResDF_hocomoco_topmotifs <- rbind(ResDF_hocomoco_topmotifs_pos, ResDF_hocomoco_topmotifs_neg)
+dim(ResDF_hocomoco_topmotifs)
 ```
 
 
 ### Strong and weak effects
 
-```{r Magnitude of effect hocomoco, fig.height=5, fig.width=9, collapse=TRUE,dpi=150}
+```{r Magnitude of effect hocomoco, fig.height=5, fig.width=9, collapse=TRUE, dpi=150, warning=FALSE}
 data.frame(table(ResDF_hocomoco_topmotifs$effect)) %>% ggplot(., aes(x = Var1, y = Freq, fill = Var1)) +
   geom_col(col='black', size=0.5) +
   scale_fill_viridis(discrete=TRUE, begin = 0.5) +
-  labs(x = '', y = 'Number of disruptions', fill = 'Magnitude of effect', title = 'hocomoco') +
+  labs(x = '', y = 'Number of disruptions', fill = 'Magnitude of effect', title = 'Total Hits') +
   geom_text(aes(label=Freq), position=position_dodge(width=0.9), vjust=-0.25) +
   theme_bw() + 
   theme(axis.text = element_text(size=11, colour = 'black'))
@@ -238,60 +237,56 @@ plot(density(ResDF_hocomoco_topmotifs$alleleDiff), main = 'Distribution of affin
 summary(ResDF_hocomoco_topmotifs$alleleDiff)
 ```
 
+*Summary of alleleDiff scores:* 
+
+__`r summary(ResDF_hocomoco_topmotifs$alleleDiff)`__
 
 ***
 
 ## Filtering out hits with weak effect (quantile-based)
 
-Here I apply a filtering strategy by dropping everything out of the 4th quantile of the distribution 
-
-__IMPORTANT!__
-__The alleleDiff score is computed as:__
-__alleleDiff = ScoreAlt - ScoreRef__
-
-Therefore, for:
-
-__∆ > 0__ affinity of the TF is higher for archaic seq (lower for modern)
-
-__∆ < 0__ affinity of the TF is higher for modern seq (lower for archaic)
-
-
-**HOWEVER IN THIS NOTEBOOK WE HAVE COMPUTED THE OPPOSITE OF THE SCORES FOR A MORE INTUITIVE ASSOCIATION BETWEEN SCORES AND AFFINITY DIFFERENCE**
-
-Therefore, for: 
-
-__∆ > 0__ affinity of the TF is higher for modern seq
-
-__∆ < 0__ affinity of the TF is higher for archaic seq 
+Hits with a weak effect are dropped by filtering on distribution quantiles of alleleDiff scores
 
 ### hocomoco {.tabset}
 
 ```{r Quantile filtering hocomoco topmotifs, collapse=TRUE}
-quantile(ResDF_hocomoco_topmotifs$alleleDiff)
+quant <- quantile(ResDF_hocomoco_topmotifs$alleleDiff)
+quant
 
-ResDF_hocomoco_topmotifs_filt_pos <- ResDF_hocomoco_topmotifs_pos %>% filter(alleleDiff >= 1.1324056) #126,398 (75% quantile)
-ResDF_hocomoco_topmotifs_filt_neg <- ResDF_hocomoco_topmotifs_neg %>% filter(alleleDiff <= -1.0379252) #126,398 (25% quantile)
+ResDF_hocomoco_topmotifs_filt_pos <- ResDF_all_hocomoco_pos %>% filter(alleleDiff >= quant[4])
+ResDF_hocomoco_topmotifs_filt_neg <- ResDF_all_hocomoco_neg %>% filter(alleleDiff <= quant[2])
+
+dim(ResDF_hocomoco_topmotifs_filt_pos)
+dim(ResDF_hocomoco_topmotifs_filt_neg)
+
+ResDF_hocomoco_topmotifs_filt <- rbind(ResDF_hocomoco_topmotifs_filt_pos, ResDF_hocomoco_topmotifs_filt_neg)
 ```
 
 * Total number of putative disruptions identified (pre-filtering): __`r nrow(ResDF_hocomoco_topmotifs)`__
 
-* AlleleDiff distrubtion's quantiles: __`r quantile(ResDF_hocomoco_topmotifs$alleleDiff)`__
+* Number of strong putative gains in affinity identified (post-filtering): __`r nrow(ResDF_hocomoco_topmotifs_filt_pos)`__
 
-* Number of strong putative disruptions identified (post-filtering): __`r nrow(ResDF_hocomoco_topmotifs_filt_pos)`__
-
-* Number of strong putative gains identified (post-filtering): __`r nrow(ResDF_hocomoco_topmotifs_filt_neg)`__
+* Number of strong putative reductions in affinity identified (post-filtering): __`r nrow(ResDF_hocomoco_topmotifs_filt_neg)`__
 
 
-# Calculate pvalues
+# Calculate pvalues and FDR
+
+**Given that it is a vert memory and time intensive process, precise pvalues are calculated only for a subset of the results, namely the ones passing the alelleDiff filtering.**
 
 ```{r collapse=TRUE}
-tmp <- rbind(ResDF_hocomoco_topmotifs_filt_pos, ResDF_hocomoco_topmotifs_filt_neg)
+pval.grange = readRDS('/group/testa/Users/oliviero.leonardi/myProjects/EVAS/ContainerHome/RegIslands/Savings/GR_hocomoco_topmotifs_filtered.posnegscores_pvalues_joined_uniqID_subsetFiltered.rds')
 
-pval.grange <- mbrkresults_regislands_hg19_hocomoco[mbrkresults_regislands_hg19_hocomoco$seqMatch %in% tmp$seqMatch, ] #extract entries from result object as GRanges format is expected from calcpvalues function
+pval.grange$AltFDR <- p.adjust(pval.grange$Altpvalue, method = 'BH')
+pval.grange$RefFDR <- p.adjust(pval.grange$Refpvalue, method = 'BH')
+```
 
-saveRDS(pval.grange, file = '/group/testa/Users/oliviero.leonardi/myProjects/EVAS/ContainerHome/RegIslands/Savings/GR_hocomoco_topmotifs_filt.posneg.rds')
+## Divide again hits with positive and negative alleleDiff scores
 
-#pval.grange <- readRDS(file='/group/testa/Users/oliviero.leonardi/myProjects/EVAS/ContainerHome/RegIslands/Savings/GR_hocomoco_topmotifs_filt.posneg_pvalues.rds')
+```{r collapse=TRUE}
+ResDF_hocomoco_topmotifs_filt <- data.frame(pval.grange)
+
+ResDF_hocomoco_topmotifs_filt_pos <- ResDF_hocomoco_topmotifs_filt %>% filter(alleleDiff > 0)
+ResDF_hocomoco_topmotifs_filt_neg <- ResDF_hocomoco_topmotifs_filt %>% filter(alleleDiff < 0)
 ```
 
 
@@ -451,15 +446,15 @@ TFreq_neg %>%
 ### hocomoco
 
 ```{r Ditribution quantiles for TF enriched for positive disruption over the total, collapse=TRUE}
-quantile(data.frame(table(ResDF_hocomoco_topmotifs_filt_pos$geneSymbol) / table(ResDF_hocomoco_topmotifs[which(ResDF_hocomoco_topmotifs$geneSymbol %in% ResDF_hocomoco_topmotifs_filt_pos$geneSymbol),]$geneSymbol))$Freq)
+freq_quant1 <- quantile(data.frame(table(ResDF_hocomoco_topmotifs_filt_pos$geneSymbol) / table(ResDF_hocomoco_topmotifs[which(ResDF_hocomoco_topmotifs$geneSymbol %in% ResDF_hocomoco_topmotifs_filt_pos$geneSymbol),]$geneSymbol))$Freq)
 
-selTF_hocomoco_pos <- data.frame(table(ResDF_hocomoco_topmotifs_filt_pos$geneSymbol) / table(ResDF_hocomoco_topmotifs[which(ResDF_hocomoco_topmotifs$geneSymbol %in% ResDF_hocomoco_topmotifs_filt_pos$geneSymbol),]$geneSymbol)) %>% filter(Freq >= 0.39208075)
+selTF_hocomoco_pos <- data.frame(table(ResDF_hocomoco_topmotifs_filt_pos$geneSymbol) / table(ResDF_hocomoco_topmotifs[which(ResDF_hocomoco_topmotifs$geneSymbol %in% ResDF_hocomoco_topmotifs_filt_pos$geneSymbol),]$geneSymbol)) %>% filter(Freq >= freq_quant1[4])
 ```
 
 ```{r Ditribution quantiles for TF enriched for negative disruption over the total, collapse=TRUE}
-quantile(data.frame(table(ResDF_hocomoco_topmotifs_filt_neg$geneSymbol) / table(ResDF_hocomoco_topmotifs[which(ResDF_hocomoco_topmotifs$geneSymbol %in% ResDF_hocomoco_topmotifs_filt_neg$geneSymbol),]$geneSymbol))$Freq)
+freq_quant2 <- quantile(data.frame(table(ResDF_hocomoco_topmotifs_filt_neg$geneSymbol) / table(ResDF_hocomoco_topmotifs[which(ResDF_hocomoco_topmotifs$geneSymbol %in% ResDF_hocomoco_topmotifs_filt_neg$geneSymbol),]$geneSymbol))$Freq)
 
-selTF_hocomoco_neg <- data.frame(table(ResDF_hocomoco_topmotifs_filt_neg$geneSymbol) / table(ResDF_hocomoco_topmotifs[which(ResDF_hocomoco_topmotifs$geneSymbol %in% ResDF_hocomoco_topmotifs_filt_neg$geneSymbol),]$geneSymbol)) %>% filter(Freq >= 0.3846154)
+selTF_hocomoco_neg <- data.frame(table(ResDF_hocomoco_topmotifs_filt_neg$geneSymbol) / table(ResDF_hocomoco_topmotifs[which(ResDF_hocomoco_topmotifs$geneSymbol %in% ResDF_hocomoco_topmotifs_filt_neg$geneSymbol),]$geneSymbol)) %>% filter(Freq >= freq_quant2[4])
 ```
 
 ### hocomoco {.tabset}
@@ -501,7 +496,7 @@ upset(fromList(listinput1), order.by = "freq")
 
 ### Genes lists
 
-```{r}
+```{r collapse=TRUE}
 PosNegScore <- Reduce(intersect, listinput1) 
 
 PosScoresOnly <- Reduce(setdiff, list(pos=as.vector(ResDF_hocomoco_topmotifs_filt_pos$geneSymbol),
@@ -509,20 +504,26 @@ PosScoresOnly <- Reduce(setdiff, list(pos=as.vector(ResDF_hocomoco_topmotifs_fil
 
 NegScoresOnly <- Reduce(setdiff, list(neg=as.vector(ResDF_hocomoco_topmotifs_filt_neg$geneSymbol),
                      pos=as.vector(ResDF_hocomoco_topmotifs_filt_pos$geneSymbol)))
+```
 
 
+```{r collapse=TRUE}
 data.frame(PosNegScore) %>% 
   DT::datatable(class='hover', rownames=FALSE, caption='TFs with positive and negative scores',
                 escape=TRUE, extension='Buttons',
                 options=list(pageLength=11, dom='Bfrtip'))
+```
 
 
+```{r collapse=TRUE}
 data.frame(NegScoresOnly) %>% 
   DT::datatable(class='hover', rownames=FALSE, caption='TFs with negative scores only',
                 escape=TRUE, extension='Buttons',
                 options=list(pageLength=11, dom='Bfrtip'))
+```
 
 
+```{r collapse=TRUE}
 data.frame(PosScoresOnly) %>% 
   DT::datatable(class='hover', rownames=FALSE, caption='TFs with positive scores only',
                 escape=TRUE, extension='Buttons',
@@ -535,9 +536,7 @@ data.frame(PosScoresOnly) %>%
 ***
 
 
-# Gene Ontology
-
-## hocomoco
+# Gene Ontology Enrichment Analysis
 
 ### Enrichments of affected TFs over all TFs with motifs stored in hocomoco
 
@@ -647,20 +646,20 @@ rm(ResOrdered)
 TopGOBarplot_neg
 ```
 
+***
+
+
+
+
 
 ***
 
-```{r collapse=TRUE}
+```{r include=FALSE}
 paperfolder = '/group/testa/Users/oliviero.leonardi/myProjects/EVAS/ContainerHome/RegIslands/Paper/'
 
-totable <- ungroup(ResDF_hocomoco_topmotifs) #ungroup
-totable <- totable[, -c(20,21)] #remove pvalue columns
+write.table(ungroup(ResDF_hocomoco_topmotifs), file=paste0(paperfolder, 'RegIslands.hocomoco.hg19.motifbreakR.topmotifs.unfiltered.tsv'), quote = FALSE, sep = '\t', row.names = F, col.names = TRUE, dec = '.')
+write.table(ResDF_hocomoco_topmotifs_filt, file=paste0(paperfolder, 'RegIslands.hocomoco.hg19.motifbreakR.topmotifs.filtered.tsv'), quote = FALSE, sep = '\t', row.names = F, col.names = TRUE, dec = '.')
 
-write.table(totable, file=paste0(paperfolder, 'RegIslands.hocomoco.hg19.motifbreakR.topmotifs.unfiltered.tsv'), quote = FALSE, sep = '\t', row.names = F, col.names = TRUE)
-```
-
-
-```{r collapse=TRUE}
 write.table(ResBP_pos_hocomoco$ResAll, file=paste0(paperfolder, 'topGO.BP.increasedAff.allGOterms.tsv'), quote = FALSE, sep = '\t', row.names = F, col.names = TRUE)
 write.table(ResBP_pos_hocomoco$ResSel, file=paste0(paperfolder, 'topGO.BP.increasedAff.selectedGOterms.tsv'), quote = FALSE, sep = '\t', row.names = F, col.names = TRUE)
 
