@@ -1,0 +1,13 @@
+GO.ID	Term	Annotated	Significant	Expected	Statistics	ER
+GO:0045944	positive regulation of transcription by RNA polymerase II	308	262	253.13	8.5e-10	1.04
+GO:0030154	cell differentiation	281	234	230.94	0.0015	1.01
+GO:0045893	positive regulation of transcription, DNA-templated	327	278	268.75	0.0031	1.03
+GO:0051241	negative regulation of multicellular organismal process	82	69	67.39	0.0071	1.02
+GO:0030324	lung development	27	26	22.19	0.0071	1.17
+GO:0019221	cytokine-mediated signaling pathway	23	22	18.9	0.0158	1.16
+GO:0008285	negative regulation of cell population proliferation	69	58	56.71	0.0188	1.02
+GO:0033043	regulation of organelle organization	14	14	11.51	0.0229	1.22
+GO:0009267	cellular response to starvation	14	14	11.51	0.0229	1.22
+GO:0055088	lipid homeostasis	13	13	10.68	0.0301	1.22
+GO:0035914	skeletal muscle cell differentiation	13	13	10.68	0.0301	1.22
+GO:0042752	regulation of circadian rhythm	13	13	10.68	0.0301	1.22
